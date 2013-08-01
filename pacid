@@ -119,4 +119,4 @@ if __name__ == '__main__':
         sql_split(os.popen('pg_dump --create --schema-only'), output_dir)
 
         os.chdir(output_dir)
-        os.system("git add -A . && git commit -q -m 'updates'")
+        os.system("git add -A . && git commit -q -m 'updates' >/dev/null")
