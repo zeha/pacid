@@ -102,7 +102,7 @@ def sql_split(stream, outdir):
 
 if __name__ == '__main__':
 	if len(sys.argv) != 2:
-		print("Usage: PGUSER=user PGDATABASE=db PGPASSWORD=pass PGHOST=host pancid output-dir")
+		print("Usage: PGUSER=user PGDATABASE=db PGPASSWORD=pass PGHOST=host pacid output-dir")
 		sys.exit(1)
 
         os.umask(0077)
