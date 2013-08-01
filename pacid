@@ -1,0 +1,122 @@
+#!/usr/bin/python
+"""
+Splits a standard pg_dump dump into single files.
+"""
+
+from __future__ import print_function
+
+import sys
+import os
+import shutil
+import glob
+
+
+def filename_from_metadata(metadata):
+	if metadata['name'].startswith('SCHEMA '):
+		metadata['type'] = 'SCHEMA'
+		metadata['name'] = metadata['name'].split(' ', 2)[1]
+	if metadata['schema'] == '-':
+		if metadata['type'] == 'ACL':
+			metadata['schema'] = metadata['name']
+			metadata['type'] = 'SCHEMA'
+		elif metadata['type'] in ('SCHEMA'):
+			# these are written into schema/schema.sql
+			pass
+		elif metadata['type'] in ('PROCEDURAL LANGUAGE', 'EXTENSION', 'COMMENT'):
+			return 'init'
+		else:
+			print("W: Unhandled type '%s' in initialization phase." % metadata['type'])
+	if metadata['type'] == 'SEQUENCE OWNED BY':
+		metadata['type'] = 'SEQUENCE'
+	if metadata['type'] == 'COMMENT':
+		if ' ' in metadata['name']:
+			metadata['type'] = metadata['name'].split(' ', 2)[0]
+			metadata['name'] = metadata['name'].split(' ', 2)[1]
+	if metadata['type'] == 'SCHEMA':
+		metadata['schema'] = metadata['name']
+
+
+	# formatting preparation
+	for k in metadata:
+		metadata[k] = metadata[k].lower()
+	# strip function arguments so we'll have a valid filename.
+	metadata['name'] = metadata['name'].split('(')[0]
+
+	if metadata['type'] == 'schema':
+		return '%(schema)s/%(name)s' % metadata
+	else:
+		return '%(schema)s/%(type)s/%(name)s' % metadata
+
+
+def parse_dump_header(header):
+	header = header.split('-- ', 2)[1].strip()
+	parts = header.split(';')
+	data = {}
+	for part in parts:
+		k,v = part.split(':', 2)
+		data[k.lower().strip()] = v.strip()
+	return data
+
+
+def open_outfile(outdir, key):
+	global file_ids
+	if key not in file_ids:
+		file_ids[key] = 0
+	file_ids[key] += 1
+	filename = '%s_%03d.sql' % (key, file_ids[key])
+	path = os.path.join(outdir, filename)
+	parent_dir = os.path.dirname(path)
+	if not os.path.exists(parent_dir):
+		os.makedirs(parent_dir)
+	return (open(path, 'w'), filename)
+
+
+def sql_split(stream, outdir):
+	global file_ids
+	metadata = None
+	last_base_filename = None
+	file_ids = {}
+	(outfile, real_filename) = open_outfile(outdir, 'init')
+	allfile = open(os.path.join(outdir, 'all.sql'), 'w')
+	allfile.write("\\i globals.sql\n")
+	allfile.write("\\i %s\n" % real_filename)
+
+	for line in stream:
+		line = line.rstrip()
+		if line.startswith('-- Name'):
+			metadata = parse_dump_header(line)
+			base_filename = filename_from_metadata(metadata)
+			if last_base_filename != base_filename:
+				last_base_filename = base_filename
+				outfile.close()
+				(outfile, real_filename) = open_outfile(outdir, base_filename)
+				allfile.write("\\i %s\n" % real_filename)
+		elif line == '--':
+			# ignore empty comments (they look bad in the output)
+			continue
+		outfile.write(line + "\n")
+
+	outfile.close()
+	allfile.close()
+
+
+if __name__ == '__main__':
+	if len(sys.argv) != 2:
+		print("Usage: PGUSER=user PGDATABASE=db PGPASSWORD=pass PGHOST=host pancid output-dir")
+		sys.exit(1)
+
+        os.umask(0077)
+
+        output_dir = sys.argv[1]
+        for entry in glob.glob(output_dir + "/*"):
+                if os.path.isdir(entry):
+                        shutil.rmtree(entry)
+                else:
+                        os.unlink(entry)
+
+        os.system("pg_dumpall -g -l " + os.environ['PGDATABASE'] + " | perl -pae \"s/PASSWORD '[^']+'/PASSWORD '***'/\" > " + output_dir + "/globals.sql")
+
+        sql_split(os.popen('pg_dump -s'), output_dir)
+
+        os.chdir(output_dir)
+        os.system("git add -A . && git commit -q -m 'updates'")
