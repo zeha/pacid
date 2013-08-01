@@ -1,0 +1,14 @@
+PACID
+-----
+
+Dumps a PostgreSQL database and splits it into single files for easy diffing.
+A git commit is created automatically as well.
+
+Setup:
+git init out
+
+With PostgreSQL <= 9.2:
+./patch-pg_dump/patch.sh
+
+Run:
+PATH=.:$PATH PGUSER=user PGDATABASE=database PGPASSWORD=password PGHOST=host ./pacid out
