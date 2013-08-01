@@ -22,7 +22,7 @@ def filename_from_metadata(metadata):
 		elif metadata['type'] in ('SCHEMA'):
 			# these are written into schema/schema.sql
 			pass
-		elif metadata['type'] in ('PROCEDURAL LANGUAGE', 'EXTENSION', 'COMMENT'):
+		elif metadata['type'] in ('PROCEDURAL LANGUAGE', 'EXTENSION', 'COMMENT', 'DATABASE'):
 			return 'init'
 		else:
 			print("W: Unhandled type '%s' in initialization phase." % metadata['type'])
@@ -116,7 +116,7 @@ if __name__ == '__main__':
 
         os.system("pg_dumpall -g -l " + os.environ['PGDATABASE'] + " | perl -pae \"s/PASSWORD '[^']+'/PASSWORD '***'/\" > " + output_dir + "/globals.sql")
 
-        sql_split(os.popen('pg_dump -s'), output_dir)
+        sql_split(os.popen('pg_dump --create --schema-only'), output_dir)
 
         os.chdir(output_dir)
         os.system("git add -A . && git commit -q -m 'updates'")
