@@ -22,11 +22,11 @@ Run:
 
 Example:
 
-    PATH=.:$PATH PGUSER=user PGDATABASE=database PGPASSWORD=password PGHOST=host ./pacid out
+    PATH=.:$PATH PGUSER=user PGDATABASE=database PGPASSWORD=password PGHOST=host ./pacid dest-dir
 
 
 
 Best put that into a cronjob, like this:
 
-     @daily PATH=.:$PATH PGUSER=user PGDATABASE=database PGPASSWORD=password PGHOST=host ./pacid out && git push -q
+     @daily PATH=.:$PATH PGUSER=user PGDATABASE=database PGPASSWORD=password PGHOST=host ./pacid dest-dir && git push -q
 
