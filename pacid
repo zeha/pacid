@@ -102,6 +102,9 @@ def sql_split(lines, outdir):
         elif line == '--':
             # ignore empty comments (they look bad in the output)
             continue
+        elif line.startswith('SET search_path'):
+            allfile.write("\n" + line + "\n")
+            continue
         outlines.append(line)
 
     write_outlines(outfile, outlines)
