@@ -9,6 +9,7 @@ import sys
 import os
 import shutil
 import glob
+from subprocess import Popen, PIPE
 
 
 def filename_from_metadata(metadata):
@@ -70,7 +71,7 @@ def open_outfile(outdir, key):
     return (open(path, 'w'), filename)
 
 
-def sql_split(stream, outdir):
+def sql_split(lines, outdir):
     global file_ids
     metadata = None
     last_base_filename = None
@@ -80,7 +81,7 @@ def sql_split(stream, outdir):
     allfile.write("\\i globals.sql\n")
     allfile.write("\\i %s\n" % real_filename)
 
-    for line in stream:
+    for line in lines:
         line = line.rstrip()
         if line.startswith('-- Name'):
             metadata = parse_dump_header(line)
@@ -116,7 +117,12 @@ if __name__ == '__main__':
     os.system("pg_dumpall -g -l " + os.environ['PGDATABASE'] +
               " | perl -pae \"s/PASSWORD '[^']+'/PASSWORD '***'/\" > " + output_dir + "/globals.sql")
 
-    sql_split(os.popen('pg_dump --create --schema-only'), output_dir)
+    p = Popen(['pg_dump', '--create', '--schema-only'], stdout=PIPE, stderr=PIPE)
+    (stdoutdata, stderrdata) = p.communicate()
+    if stderrdata or p.returncode:
+	print("E: pg_dump failed with returncode: %s" % (p.returncode, ))
+	print(stderrdata)
+    sql_split(stdoutdata.splitlines(), output_dir)
 
     os.chdir(output_dir)
     os.system("git add -A . && git commit -q -m 'updates' >/dev/null")
