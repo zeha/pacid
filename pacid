@@ -71,12 +71,18 @@ def open_outfile(outdir, key):
     return (open(path, 'w'), filename)
 
 
+def write_outlines(outfile, outlines):
+    out = "\n".join(outlines).rstrip()
+    outfile.write(out + "\n")
+
+
 def sql_split(lines, outdir):
     global file_ids
     metadata = None
     last_base_filename = None
     file_ids = {}
     (outfile, real_filename) = open_outfile(outdir, 'init')
+    outlines = []
     allfile = open(os.path.join(outdir, 'all.sql'), 'w')
     allfile.write("\\i globals.sql\n")
     allfile.write("\\i %s\n" % real_filename)
@@ -88,14 +94,17 @@ def sql_split(lines, outdir):
             base_filename = filename_from_metadata(metadata)
             if last_base_filename != base_filename:
                 last_base_filename = base_filename
+                write_outlines(outfile, outlines)
                 outfile.close()
                 (outfile, real_filename) = open_outfile(outdir, base_filename)
+                outlines = []
                 allfile.write("\\i %s\n" % real_filename)
         elif line == '--':
             # ignore empty comments (they look bad in the output)
             continue
-        outfile.write(line + "\n")
+        outlines.append(line)
 
+    write_outlines(outfile, outlines)
     outfile.close()
     allfile.close()
 
