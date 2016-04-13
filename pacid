@@ -23,7 +23,7 @@ def filename_from_metadata(metadata):
         elif metadata['type'] in ('SCHEMA'):
             # these are written into schema/schema.sql
             pass
-        elif metadata['type'] in ('PROCEDURAL LANGUAGE', 'EXTENSION', 'COMMENT', 'DATABASE'):
+        elif metadata['type'] in ('PROCEDURAL LANGUAGE', 'EXTENSION', 'COMMENT', 'DATABASE', 'DEFAULT ACL'):
             return 'init'
         else:
             print("W: Unhandled type '%s' in initialization phase." % metadata['type'])
